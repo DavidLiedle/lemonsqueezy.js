@@ -54,7 +54,7 @@ export function convertKeys(
  */
 export function convertIncludeToQueryString(include: string[] | undefined) {
   if (!include || !Array.isArray(include) || !include.length) return "";
-  return `?include=${include.join(",")}`;
+  return `?${new URLSearchParams({ include: include.join(",") }).toString()}`;
 }
 
 /**
@@ -95,7 +95,11 @@ export function convertListParamsToQueryString(params: Params) {
  * @returns An 8-character string of uppercase letters and numbers.
  */
 export function generateDiscount() {
-  return btoa(Date.now().toString()).slice(-10, -2).toUpperCase();
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return Array.from(bytes, (b) => b.toString(36).padStart(2, "0"))
+    .join("")
+    .slice(0, 8)
+    .toUpperCase();
 }
 
 /**
