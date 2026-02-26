@@ -2,6 +2,9 @@
 export { lemonSqueezySetup } from "./internal";
 export type { Flatten } from "./types";
 
+// Pagination
+export { paginate } from "./pagination";
+
 // User
 export type { User } from "./users/types";
 export { getAuthenticatedUser } from "./users";
