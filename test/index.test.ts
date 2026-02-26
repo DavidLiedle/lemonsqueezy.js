@@ -100,6 +100,7 @@ describe("Export", () => {
       "createWebhook",
       "updateWebhook",
       "deleteWebhook",
+      "verifyWebhookSignature",
 
       // License
       "activateLicense",
