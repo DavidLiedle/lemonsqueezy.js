@@ -11,8 +11,8 @@ describe("Export", () => {
       "getAuthenticatedUser",
 
       // Stores
-      "getStoreById",
-      "getAllStores",
+      "getStore",
+      "listStores",
 
       // Customers
       "listCustomers",
@@ -106,6 +106,6 @@ describe("Export", () => {
       "validateLicense",
       "deactivateLicense",
     ];
-    expect(Object.keys(exports).length).toBe(shouldBeExports.length);
+    expect(Object.keys(exports).sort()).toEqual([...shouldBeExports].sort());
   });
 });
