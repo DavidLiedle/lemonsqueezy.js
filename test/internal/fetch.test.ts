@@ -1,6 +1,7 @@
-import { beforeAll, describe, expect, it } from "bun:test";
+import { afterEach, beforeAll, describe, expect, it } from "bun:test";
 import { lemonSqueezySetup } from "../../src";
 import { $fetch } from "../../src/internal";
+import { mockFetch } from "../utils/mock-fetch";
 
 const StoreId = import.meta.env.LEMON_SQUEEZY_STORE_ID;
 beforeAll(() => {
@@ -91,5 +92,98 @@ describe("$fetch test", () => {
     expect(statusCode).toEqual(201);
     expect(error).toBeNull();
     expect(_data).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Offline tests — use mock-fetch, no API credentials required
+// ---------------------------------------------------------------------------
+
+describe("$fetch offline (mocked)", () => {
+  let spy: ReturnType<typeof mockFetch>;
+
+  afterEach(() => {
+    spy?.restore();
+    // Restore a valid key so subsequent tests aren't affected
+    lemonSqueezySetup({ apiKey: "test-key" });
+  });
+
+  it("returns data and null error on a 2xx response", async () => {
+    const responseBody = { data: { id: "1", type: "orders" } };
+    spy = mockFetch({ status: 200, body: responseBody });
+
+    lemonSqueezySetup({ apiKey: "test-key" });
+    const { data, error, statusCode } = await $fetch({ path: "/v1/orders" });
+
+    expect(statusCode).toBe(200);
+    expect(data).toEqual(responseBody);
+    expect(error).toBeNull();
+  });
+
+  it("returns an error and preserves statusCode on a 4xx response", async () => {
+    spy = mockFetch({
+      ok: false,
+      status: 422,
+      statusText: "Unprocessable Entity",
+      body: { errors: [{ title: "Invalid attribute", detail: "storeId is required" }] },
+    });
+
+    lemonSqueezySetup({ apiKey: "test-key" });
+    const { data, error, statusCode } = await $fetch({ path: "/v1/checkouts" });
+
+    expect(statusCode).toBe(422);
+    expect(error).not.toBeNull();
+    expect(error?.name).toBe("Lemon Squeezy Error");
+    expect(data).toBeDefined();
+  });
+
+  it("invokes onError with the error on a failed response", async () => {
+    spy = mockFetch({ ok: false, status: 500, statusText: "Internal Server Error", body: {} });
+
+    let capturedError: Error | null = null;
+    lemonSqueezySetup({
+      apiKey: "test-key",
+      onError: (e) => { capturedError = e; },
+    });
+
+    await $fetch({ path: "/v1/orders" });
+
+    expect(capturedError).not.toBeNull();
+    expect((capturedError as unknown as Error).name).toBe("Lemon Squeezy Error");
+  });
+
+  it("attaches the Authorization header when an API key is set", async () => {
+    spy = mockFetch({ status: 200, body: {} });
+
+    lemonSqueezySetup({ apiKey: "my-secret-key" });
+    await $fetch({ path: "/v1/orders" });
+
+    const authHeader = (spy.calls[0].options.headers as Headers).get("Authorization");
+    expect(authHeader).toBe("Bearer my-secret-key");
+  });
+
+  it("serialises the body as JSON for POST requests", async () => {
+    spy = mockFetch({ status: 201, body: {} });
+
+    lemonSqueezySetup({ apiKey: "test-key" });
+    const payload = { data: { type: "checkouts", attributes: { test: true } } };
+    await $fetch({ path: "/v1/checkouts", method: "POST", body: payload });
+
+    expect(spy.calls[0].options.body).toBe(JSON.stringify(payload));
+  });
+
+  it("returns an error (no status) when fetch itself throws a network error", async () => {
+    const originalFetch = global.fetch;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).fetch = async () => { throw new Error("Network error"); };
+
+    lemonSqueezySetup({ apiKey: "test-key" });
+    const { error, statusCode, data } = await $fetch({ path: "/v1/orders" });
+
+    global.fetch = originalFetch;
+
+    expect(statusCode).toBeNull();
+    expect(data).toBeNull();
+    expect(error?.message).toBe("Network error");
   });
 });
