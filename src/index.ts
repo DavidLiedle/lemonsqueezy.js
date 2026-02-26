@@ -232,6 +232,7 @@ export {
   createWebhook,
   updateWebhook,
   deleteWebhook,
+  verifyWebhookSignature,
 } from "./webhooks";
 
 // License API
