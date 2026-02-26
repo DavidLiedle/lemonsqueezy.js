@@ -7,6 +7,9 @@ describe("Export", () => {
       // Setup
       "lemonSqueezySetup",
 
+      // Pagination
+      "paginate",
+
       // Users
       "getAuthenticatedUser",
 
